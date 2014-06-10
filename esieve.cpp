@@ -1,7 +1,10 @@
 #include <iostream>
+#include <vector>
+#include <boost/dynamic_bitset.hpp>
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <time.h>
 #include <string.h>
 
@@ -73,6 +76,8 @@ bool *n2_sieve(unsigned long upper_bound){
   return array;
 }
 
+
+
 // Odd number only sieve
 bool *odd_sieve(unsigned long upper_bound){
 
@@ -110,13 +115,84 @@ bool *odd_sieve(unsigned long upper_bound){
   return array;
 }
 
+vector<bool> bitarray_sieve(unsigned long upper_bound){
+
+  vector<bool> res((upper_bound/2)+1, false); 
+  unsigned long c = (unsigned long)ceil(sqrt(upper_bound));
+
+  for(unsigned long i=1; (i+(i+1))<=c; i++){
+    if(res.at(i) == 0){
+      unsigned long inc = (i+(i+1));
+      unsigned long sqr = (inc*i)+i;
+      for(unsigned long j=sqr; j<=(upper_bound/2); j+=inc){
+	res.at(j) = true;
+      }
+    }
+  }
+
+  return res;
+}
+
+// Bit array odd only sieve using boost::dynamic_bitset<>
+boost::dynamic_bitset<> boostbit_sieve(unsigned long upper_bound){
+
+  boost::dynamic_bitset<> res((upper_bound/2)+1); 
+  unsigned long c = (unsigned long)ceil(sqrt(upper_bound));
+
+  for(boost::dynamic_bitset<>::size_type i = 1; (i+(i+1))<=c; i++){
+    if(res[i] == 0){
+      unsigned long inc = (i+(i+1));
+      unsigned long sqr = (inc*i)+i;
+      for(boost::dynamic_bitset<>::size_type j=sqr; j<=(upper_bound/2); j+=inc){
+	res[j] = 1;
+      }
+    }
+  }
+  return res;
+}
+
+// Segmented odd only sieve using boost::dynamic_bitset<>
+boost::dynamic_bitset<> segmented_sieve(unsigned long upper_bound){
+
+  boost::dynamic_bitset<> res((upper_bound/2)+1); 
+  unsigned long c = (unsigned long)ceil(sqrt(upper_bound));
+
+  vector<int> sieving_primes;
+  vector<unsigned long> next_mult;
+  short next_window = 1;
+  unsigned long starting_index = 0;
+  const int window_size = 500000;  // Bit set of this size fits in L1 cache
+  boost::dynamic_bitset<> window(window_size);
+
+  for(boost::dynamic_bitset<>::size_type i = 1; (i+(i+1))<=c; i++){
+    if(window[i] == 0){
+      sieving_primes.push_back(i+(i+1));
+      cout<<"Added "<<i+(i+1)<<" to primes list.\n";
+      unsigned long inc = (i+(i+1));
+      unsigned long sqr = (inc*i)+i;
+      unsigned long j=sqr;
+      while(j<window_size){
+	
+	window[j] = 1;
+	j+=inc;
+	if(j > window_size){
+	  next_mult.push_back((2*i)+1);
+	  cout<<(2*j)+1<<" is the next multiple of "<<i+i+1<<endl;
+	}
+      }
+    }
+  }
+  cout<<"First window complete\n";
+  return res;
+}
+
 // Standard double for loop implementation with break
 // on factor find.
 bool *standard(int upper_bound){
   
   // If a factor has been found
   bool factor = 0;
-
+  unsigned long c = (unsigned long)ceil(sqrt(upper_bound));
   // Allocate memory for result array
   bool *array = (bool*)malloc(upper_bound+1);
   // Set the memory to all 1s
@@ -126,7 +202,7 @@ bool *standard(int upper_bound){
   for(int i=3; i<=upper_bound; i++){
 
     // Loop through each possible factor for i (2 to i)
-    for(int j=2; j<i; j++){
+    for(int j=2; j<=c; j++){
       
       // If i is divisible by j, break because we found a factor
       if(i%j == 0){
@@ -189,6 +265,27 @@ void print_odd(bool *array, int upper_bound, int list_mod){
   cout<<"Found "<<num_primes<<" primes.\n";
 }
 
+// Print results for odd only array. Needs funky indexing
+void print_bitarray(boost::dynamic_bitset<> array, int upper_bound, int list_mod){
+  int tc = 1;
+  int num_primes = 1;
+  cout<<"2\t";
+  for(int i=1; i<=(upper_bound/2); i++){
+    if(array[i] == 0){
+      if(list_mod > 0){
+	cout<<(i+(i+1))<<"\t";
+      }
+      num_primes++;
+      tc++;
+    }
+    if(list_mod > 0 && tc==list_mod){
+      cout<<"\n";
+      tc = 0;
+    }
+  }
+  cout<<"Found "<<num_primes<<" primes.\n";
+}
+
 int main(int argc, char* argv[]){
 
 
@@ -230,7 +327,7 @@ int main(int argc, char* argv[]){
     free(array);  
 
     //Run the odd number only sieve
-  } else {
+  } else if (mode == 4) {
     bool *array = odd_sieve(upper_bound);
     
     if(list_mod != -5){
@@ -238,6 +335,13 @@ int main(int argc, char* argv[]){
     }
     // Free results
     free(array);
+  } else {
+    boost::dynamic_bitset<> array = segmented_sieve(upper_bound);
+    //if(list_mod != -5){
+    //print_bitarray(array, upper_bound, list_mod);
+    //}
+
+
   }
 
   return 0;
